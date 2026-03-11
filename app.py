@@ -30,7 +30,9 @@ st.markdown("---")
 def get_macro_data():
     df_list = []
     for name, code in indicators.items():
+        # Scarichiamo dal 2021
         series = fred.get_series(code, observation_start='2021-01-01')
+        # Calcolo inflazione YoY in percentuale
         inflation = series.pct_change(periods=12) * 100
         df_list.append(pd.DataFrame({name: inflation}))
     return pd.concat(df_list, axis=1).dropna()
@@ -38,6 +40,11 @@ def get_macro_data():
 try:
     data = get_macro_data()
     
+    # --- DEBUG: Questa tabella ti mostra le date esatte ---
+    with st.expander("🔍 Debug: Vedi dati grezzi e date"):
+        st.write(data.tail())
+    # ------------------------------------------------------
+
     # Metriche veloci
     cols = st.columns(4)
     for i, nazione in enumerate(indicators.keys()):
