@@ -1,0 +1,61 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import streamlit as st\
+import pandas as pd\
+from fredapi import Fred\
+import plotly.express as px\
+\
+# Configurazione Pagina\
+st.set_page_config(page_title="Macro Terminal", layout="wide", page_icon="\uc0\u55357 \u56520 ")\
+\
+# Recupero API Key dai Secrets di Streamlit\
+try:\
+    API_KEY = st.secrets["FRED_API_KEY"]\
+except:\
+    st.error("Errore: Inserisci la tua FRED_API_KEY nei 'Secrets' di Streamlit!")\
+    st.stop()\
+\
+fred = Fred(api_key=API_KEY)\
+\
+# Codici nazioni (USA, Eurozona, UK, Giappone)\
+indicators = \{\
+    'USA': 'CPIAUCSL',\
+    'Euro Area': 'CP0000EZ19M086NEST',\
+    'UK': 'GBRCPIALLMINMEI',\
+    'Japan': 'JPNCPIALLMINMEI'\
+\}\
+\
+st.title("\uc0\u55357 \u56522  Il Mio Terminale Macro")\
+st.markdown("---")\
+\
+@st.cache_data(ttl=3600)\
+def get_macro_data():\
+    df_list = []\
+    for name, code in indicators.items():\
+        series = fred.get_series(code, observation_start='2021-01-01')\
+        inflation = series.pct_change(periods=12) * 100\
+        df_list.append(pd.DataFrame(\{name: inflation\}))\
+    return pd.concat(df_list, axis=1).dropna()\
+\
+try:\
+    data = get_macro_data()\
+    \
+    # Metriche veloci\
+    cols = st.columns(4)\
+    for i, nazione in enumerate(indicators.keys()):\
+        val = data[nazione].iloc[-1]\
+        diff = val - data[nazione].iloc[-2]\
+        cols[i].metric(nazione, f"\{val:.2f\}%", f"\{diff:.2f\}%", delta_color="inverse")\
+\
+    # Grafico\
+    fig = px.line(data, x=data.index, y=data.columns, \
+                 template="plotly_dark", title="Andamento Inflazione YoY %")\
+    st.plotly_chart(fig, use_container_width=True)\
+\
+except Exception as e:\
+    st.error(f"Errore: \{e\}")}
